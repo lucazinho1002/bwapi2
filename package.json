@@ -1,0 +1,14 @@
+{
+  "name": "bwapi2",
+  "version": "0.1.2",
+  "description": "Uma api de Blocksworld não official que nao funciona como o api de Blocksworld",
+  "author": "Lucazinho1002",
+  "main": "main.js",
+  "scripts": {
+    "start": "node .",
+    "test": "node test/test.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}

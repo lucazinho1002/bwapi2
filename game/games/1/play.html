@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>CreateBlocks - Jogo 3D</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #000;
+            font-family: sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            position: fixed;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* --- CONTROLES (UI) --- */
+        .ui-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* D-Pad Circular 2x Maior (260px) */
+        #dpad-base {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            width: 260px;
+            height: 260px;
+            background-image: url('bd.png');
+            background-size: cover;
+            background-position: center;
+            border-radius: 50%;
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        /* Stick central ligeiramente maior (75px) e centralizado (92.5px) */
+        #dpad-stick {
+            position: absolute;
+            top: 92.5px;
+            left: 92.5px;
+            width: 75px;
+            height: 75px;
+            background-image: url('dp.png');
+            background-size: cover;
+            background-position: center;
+            border-radius: 50%;
+            pointer-events: none;
+            transition: transform 0.05s linear;
+        }
+
+        /* Botão de Pular */
+        #btn-jump {
+            position: absolute;
+            bottom: 55px;
+            right: 50px;
+            width: 80px;
+            height: 80px;
+            background-image: url('bj.png');
+            background-size: cover;
+            background-position: center;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            pointer-events: auto;
+            touch-action: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div class="ui-container">
+        <!-- D-Pad -->
+        <div id="dpad-base">
+            <div id="dpad-stick"></div>
+        </div>
+
+        <!-- Botão de Pular -->
+        <div id="btn-jump"></div>
+    </div>
+
+    <!-- Áudio de Fundo -->
+    <audio id="bg-music" src="music.mp3" loop autoplay></audio>
+
+    <!-- Importando Three.js e OBJLoader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+
+    <script>
+        // --- CONFIGURAÇÃO DO SCENE, CAMERA E RENDERER ---
+        const container = document.getElementById('canvas-container');
+        
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        // Luzes
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(20, 40, 20);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // --- CHÃO COM TEXTURA GRASSTEXTURE.PNG ---
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load('grasstexture.png', (texture) => {
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(100, 100);
+
+            const floorGeometry = new THREE.PlaneGeometry(2000, 2000);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                map: texture, 
+                roughness: 0.8 
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            floor.receiveShadow = true;
+            scene.add(floor);
+        }, undefined, (err) => {
+            console.warn('Erro ao carregar grasstexture.png, usando cor verde padrão.', err);
+            const floorGeometry = new THREE.PlaneGeometry(2000, 2000);
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x55aa55 });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0;
+            floor.receiveShadow = true;
+            scene.add(floor);
+        });
+
+        // --- VARIÁVEIS DE MOVIMENTO E FÍSICA ---
+        let boneco = null;
+        let moveX = 0;
+        let moveZ = 0;
+        const speed = 0.15;
+
+        // Variáveis de pulo
+        let velocityY = 0;
+        const gravity = 0.015;
+        const jumpForce = 0.3;
+        let isJumping = false;
+        const groundY = 0;
+
+        // --- CARREGAR O BONECO.OBJ ---
+        const objLoader = new THREE.OBJLoader();
+        objLoader.load('boneco.obj', (object) => {
+            boneco = object;
+            boneco.scale.set(1, 1, 1);
+            boneco.position.set(0, 0, 0);
+            
+            boneco.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    child.material = new THREE.MeshStandardMaterial({ color: 0x44aa88 });
+                }
+            });
+
+            scene.add(boneco);
+        }, undefined, (error) => {
+            console.error('Erro ao carregar o boneco.obj', error);
+        });
+
+        // Câmera acompanha o boneco
+        function updateCamera() {
+            if (boneco) {
+                camera.position.x = boneco.position.x;
+                camera.position.y = boneco.position.y + 5;
+                camera.position.z = boneco.position.z + 8;
+                camera.lookAt(boneco.position.x, boneco.position.y + 1, boneco.position.z);
+            }
+        }
+
+        // --- CONTROLE D-PAD CIRCULAR ---
+        const dpadBase = document.getElementById('dpad-base');
+        const dpadStick = document.getElementById('dpad-stick');
+        let activeTouchId = null;
+        const maxDist = 85;
+
+        function handleDpadMove(clientX, clientY) {
+            const rect = dpadBase.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            let dx = clientX - centerX;
+            let dy = clientY - centerY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist > maxDist) {
+                dx = (dx / dist) * maxDist;
+                dy = (dy / dist) * maxDist;
+            }
+
+            dpadStick.style.transform = `translate(${dx}px, ${dy}px)`;
+
+            moveX = dx / maxDist;
+            moveZ = dy / maxDist;
+        }
+
+        function resetDpad() {
+            dpadStick.style.transform = `translate(0px, 0px)`;
+            moveX = 0;
+            moveZ = 0;
+            activeTouchId = null;
+        }
+
+        dpadBase.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            activeTouchId = touch.identifier;
+            handleDpadMove(touch.clientX, touch.clientY);
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (activeTouchId === null) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === activeTouchId) {
+                    handleDpadMove(touch.clientX, touch.clientY);
+                }
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', (e) => {
+            if (activeTouchId === null) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === activeTouchId) {
+                    resetDpad();
+                }
+            }
+        });
+
+        let mouseIsDown = false;
+        dpadBase.addEventListener('mousedown', (e) => {
+            mouseIsDown = true;
+            handleDpadMove(e.clientX, e.clientY);
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!mouseIsDown) return;
+            handleDpadMove(e.clientX, e.clientY);
+        });
+        window.addEventListener('mouseup', () => {
+            if (mouseIsDown) {
+                mouseIsDown = false;
+                resetDpad();
+            }
+        });
+
+        // --- BOTÃO DE PULAR ---
+        const btnJump = document.getElementById('btn-jump');
+
+        function triggerJump() {
+            if (!isJumping && boneco) {
+                isJumping = true;
+                velocityY = jumpForce;
+            }
+        }
+
+        btnJump.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            btnJump.style.backgroundImage = "url('bjc.png')";
+            triggerJump();
+        });
+
+        btnJump.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            btnJump.style.backgroundImage = "url('bj.png')";
+        });
+
+        btnJump.addEventListener('mousedown', () => {
+            btnJump.style.backgroundImage = "url('bjc.png')";
+            triggerJump();
+        });
+        btnJump.addEventListener('mouseup', () => {
+            btnJump.style.backgroundImage = "url('bj.png')";
+        });
+
+        // Tentar iniciar o áudio no primeiro toque/clique
+        window.addEventListener('pointerdown', () => {
+            const bgMusic = document.getElementById('bg-music');
+            if (bgMusic && bgMusic.paused) {
+                bgMusic.play().catch(() => {});
+            }
+        }, { once: true });
+
+        // --- LOOP PRINCIPAL DO JOGO ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (boneco) {
+                boneco.position.x += moveX * speed;
+                boneco.position.z += moveZ * speed;
+
+                if (moveX !== 0 || moveZ !== 0) {
+                    const angle = Math.atan2(moveX, moveZ);
+                    boneco.rotation.y = angle;
+                }
+
+                if (isJumping) {
+                    boneco.position.y += velocityY;
+                    velocityY -= gravity;
+
+                    if (boneco.position.y <= groundY) {
+                        boneco.position.y = groundY;
+                        isJumping, isJumping = false;
+                        velocityY = 0;
+                    }
+                }
+
+                updateCamera();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Correção robusta de redimensionamento e rotação para iOS (Safari)
+        function resizeGame() {
+            setTimeout(() => {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            }, 100);
+        }
+
+        window.addEventListener('resize', resizeGame);
+        window.addEventListener('orientationchange', resizeGame);
+    </script>
+</body>
+</html>
