@@ -1,5 +1,5 @@
 # bwapi2
-um api de blocksworld nao official que nao é que nem o api de blocksworld, nao tem modificando ipa que é em um site em node.js hein
+um api de blocksworld nao official que nao é que nem o api de blocksworld, nao vem modificando ipa que é em um site em node.js hein
 ## coisas e coisos
 provavelmente vai notar que está imcompleto, mas está mesmo. estou ainda criando  e testando **coisas e coisos**
 
