@@ -1,6 +1,6 @@
 {
   "name": "bwapi2",
-  "version": "0.1.2",
+  "version": "0.2.3",
   "description": "Uma api de Blocksworld não official que nao funciona como o api de Blocksworld",
   "author": "Lucazinho1002",
   "main": "main.js",

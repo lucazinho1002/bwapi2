@@ -38,6 +38,7 @@
             display: flex;
             flex: 1;
             height: calc(100vh - 50px);
+            overflow: hidden;
         }
 
         /* Barra lateral cinza começa abaixo da barra de cima */
@@ -70,13 +71,14 @@
             font-size: 14px;
         }
 
-        /* Área do conteúdo principal */
+        /* Área do conteúdo principal com rolagem vertical habilitada */
         .content-area {
             flex: 1;
             padding: 20px;
             display: flex;
             flex-direction: column;
             gap: 20px;
+            overflow-y: auto;
         }
 
         /* Caixa Superior (blockster whoa) */
@@ -88,13 +90,21 @@
             font-weight: bold;
         }
 
+        /* Container para alinhar os cards dos jogos lado a lado */
+        .games-container {
+            display: flex;
+            gap: 15px;
+            flex-wrap: nowrap;
+        }
+
         /* Card do Jogo */
         .game-card {
             background-color: #0099ff;
             border: 4px solid #000;
-            width: 320px;
+            width: 260px;
             display: flex;
             flex-direction: column;
+            flex-shrink: 0;
         }
 
         .game-thumbnail {
@@ -155,23 +165,49 @@
             <a href="#" class="home-btn">home</a>
         </div>
 
-        <!-- Conteúdo Principal -->
+        <!-- Conteúdo Principal com rolagem -->
         <div class="content-area">
             <div class="banner-box">
                 blockster whoa
             </div>
 
-            <div class="game-card">
-                <div class="game-thumbnail">
-                    <div class="fake-blocks"></div>
-                </div>
-                <div class="game-footer">
-                    <span class="game-title">blockster test</span>
-                    <a href="games/1/play.html" class="play-btn">Play</a>
-                </div>
+            <!-- Container onde os jogos serão injetados automaticamente via JavaScript -->
+            <div class="games-container" id="gamesContainer">
+                <!-- Os cards vão aparecer aqui dinamicamente -->
             </div>
         </div>
     </div>
+
+    <script>
+        // Função para carregar o database.json e criar os cards usando o ID na URL
+        fetch('database.json')
+            .then(response => response.json())
+            .then(games => {
+                const container = document.getElementById('gamesContainer');
+                container.innerHTML = ''; // Limpa o container antes de preencher
+
+                games.forEach(game => {
+                    const card = document.createElement('div');
+                    card.className = 'game-card';
+
+                    // Monta o link dinamicamente usando a estrutura games/%id%/play.html
+                    const playUrl = `games/${game.id}/play.html`;
+
+                    card.innerHTML = `
+                        <div class="game-thumbnail">
+                            <div class="fake-blocks"></div>
+                        </div>
+                        <div class="game-footer">
+                            <span class="game-title">${game.title}</span>
+                            <a href="${playUrl}" class="play-btn">Play</a>
+                        </div>
+                    `;
+
+                    container.appendChild(card);
+                });
+            })
+            .catch(error => console.error('Erro ao carregar o database.json:', error));
+    </script>
 
 </body>
 </html>

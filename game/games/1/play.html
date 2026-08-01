@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CreateBlocks - Jogo 3D</title>
+    <title>Blocksworld 4 - blockster test</title>
     <style>
         * {
             box-sizing: border-box;
@@ -97,7 +97,7 @@
 
     <div id="canvas-container"></div>
 
-    <div class="ui-container">
+    <div class="ui-container" id="ui-container">
         <!-- D-Pad -->
         <div id="dpad-base">
             <div id="dpad-stick"></div>
@@ -115,6 +115,14 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
 
     <script>
+        // --- DETECÇÃO DE DISPOSITIVO (PC vs Mobile) ---
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
+
+        if (!isMobile) {
+            // Se for PC, esconde os controles de toque
+            document.getElementById('ui-container').style.display = 'none';
+        }
+
         // --- CONFIGURAÇÃO DO SCENE, CAMERA E RENDERER ---
         const container = document.getElementById('canvas-container');
         
@@ -209,7 +217,7 @@
             }
         }
 
-        // --- CONTROLE D-PAD CIRCULAR ---
+        // --- CONTROLE D-PAD CIRCULAR (MOBILE) ---
         const dpadBase = document.getElementById('dpad-base');
         const dpadStick = document.getElementById('dpad-stick');
         let activeTouchId = null;
@@ -242,47 +250,66 @@
             activeTouchId = null;
         }
 
-        dpadBase.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touch = e.changedTouches[0];
-            activeTouchId = touch.identifier;
-            handleDpadMove(touch.clientX, touch.clientY);
-        });
+        if (isMobile) {
+            dpadBase.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.changedTouches[0];
+                activeTouchId = touch.identifier;
+                handleDpadMove(touch.clientX, touch.clientY);
+            });
 
-        window.addEventListener('touchmove', (e) => {
-            if (activeTouchId === null) return;
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                const touch = e.changedTouches[i];
-                if (touch.identifier === activeTouchId) {
-                    handleDpadMove(touch.clientX, touch.clientY);
+            window.addEventListener('touchmove', (e) => {
+                if (activeTouchId === null) return;
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const touch = e.changedTouches[i];
+                    if (touch.identifier === activeTouchId) {
+                        handleDpadMove(touch.clientX, touch.clientY);
+                    }
                 }
-            }
-        }, { passive: false });
+            }, { passive: false });
 
-        window.addEventListener('touchend', (e) => {
-            if (activeTouchId === null) return;
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === activeTouchId) {
-                    resetDpad();
+            window.addEventListener('touchend', (e) => {
+                if (activeTouchId === null) return;
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === activeTouchId) {
+                        resetDpad();
+                    }
                 }
+            });
+        }
+
+        // --- CONTROLES DE TECLADO (PC: WASD + Seta para Cima) ---
+        const keys = { w: false, a: false, s: false, d: false, arrowup: false };
+
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'w' || key === 'arrowup') {
+                if (key === 'arrowup') triggerJump();
+                keys[key] = true;
             }
+            if (key === 'a') keys.a = true;
+            if (key === 's') keys.s = true;
+            if (key === 'd') keys.d = true;
+            updateKeyboardMovement();
         });
 
-        let mouseIsDown = false;
-        dpadBase.addEventListener('mousedown', (e) => {
-            mouseIsDown = true;
-            handleDpadMove(e.clientX, e.clientY);
-        });
-        window.addEventListener('mousemove', (e) => {
-            if (!mouseIsDown) return;
-            handleDpadMove(e.clientX, e.clientY);
-        });
-        window.addEventListener('mouseup', () => {
-            if (mouseIsDown) {
-                mouseIsDown = false;
-                resetDpad();
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (keys[key] !== undefined) {
+                keys[key] = false;
             }
+            updateKeyboardMovement();
         });
+
+        function updateKeyboardMovement() {
+            if (isMobile) return;
+            moveX = 0;
+            moveZ = 0;
+            if (keys.a) moveX -= 1;
+            if (keys.d) moveX += 1;
+            if (keys.w) moveZ -= 1;
+            if (keys.s) moveZ += 1;
+        }
 
         // --- BOTÃO DE PULAR ---
         const btnJump = document.getElementById('btn-jump');
@@ -294,24 +321,18 @@
             }
         }
 
-        btnJump.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            btnJump.style.backgroundImage = "url('bjc.png')";
-            triggerJump();
-        });
+        if (isMobile) {
+            btnJump.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                btnJump.style.backgroundImage = "url('bjc.png')";
+                triggerJump();
+            });
 
-        btnJump.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            btnJump.style.backgroundImage = "url('bj.png')";
-        });
-
-        btnJump.addEventListener('mousedown', () => {
-            btnJump.style.backgroundImage = "url('bjc.png')";
-            triggerJump();
-        });
-        btnJump.addEventListener('mouseup', () => {
-            btnJump.style.backgroundImage = "url('bj.png')";
-        });
+            btnJump.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                btnJump.style.backgroundImage = "url('bj.png')";
+            });
+        }
 
         // Tentar iniciar o áudio no primeiro toque/clique
         window.addEventListener('pointerdown', () => {
@@ -340,7 +361,7 @@
 
                     if (boneco.position.y <= groundY) {
                         boneco.position.y = groundY;
-                        isJumping, isJumping = false;
+                        isJumping = false;
                         velocityY = 0;
                     }
                 }
