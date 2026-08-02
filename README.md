@@ -13,7 +13,11 @@ nada de mais é só fazer **npm install** e depois **npm start** (ou abrir o **l
 ## mudar android
 para mudar o apk e colocar o seu ip é só pegar um app como apk editor ou apk tool para editar e no assets/serv.txt trocar de **192.198.3.37** pelo seu ip local de wifi do seu pc/celular.
 
-e para funcionar vá em src/login.js no codigo fonte do nodejs e dai aonde esta escrito lucazinho1002gamer, coloque um espaço e digite o seu nome de usuario que quer para digitar no espaço de usuario no apk para fazer login.
+## mudar pc
+vá em recources, app e depois src, dai va em index.html e mude tudo de **192.198.3.37** pelo seu ip local de wifi do seu pc/celular.
+
+## server
+e para funcionar vá em src/login.js no codigo fonte do nodejs e dai aonde esta escrito lucazinho1002gamer, coloque um espaço e digite o seu nome de usuario que quer para digitar no espaço de usuario no apk para fazer login. no pc é a mesma coisa.
 
 ---
 
