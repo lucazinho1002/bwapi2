@@ -101,21 +101,21 @@
             font-weight: bold;
         }
 
-        /* Container para alinhar os cards dos jogos lado a lado */
+        /* Força exatamente 2 colunas por fileira */
         .games-container {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 15px;
-            flex-wrap: nowrap;
+            width: 100%;
         }
 
-        /* Card do Jogo */
+        /* Card do Jogo ocupa 100% da sua coluna designada */
         .game-card {
             background-color: #0099ff;
             border: 4px solid #000;
-            width: 260px;
+            width: 100%;
             display: flex;
             flex-direction: column;
-            flex-shrink: 0;
         }
 
         .game-thumbnail {
@@ -180,7 +180,7 @@
         <!-- Conteúdo Principal com rolagem -->
         <div class="content-area">
             <div class="banner-box">
-                build mode chegoooooooooooooooooooooooooou!
+                build mode chegou!
             </div>
 
             <!-- Container onde os jogos serão injetados automaticamente via JavaScript -->
