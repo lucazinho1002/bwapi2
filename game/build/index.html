@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Criador de Mapas GLB</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #222;
+            color: #fff;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: #ffffff;
+            z-index: 1;
+        }
+        @media (min-width: 768px) {
+            #canvas-container {
+                width: calc(100vw - 320px);
+            }
+        }
+        #sidebar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100vw;
+            height: 220px;
+            background: #333;
+            display: flex;
+            flex-direction: column;
+            border-top: 2px solid #444;
+            padding: 8px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+        @media (min-width: 768px) {
+            #sidebar {
+                top: 0;
+                right: 0;
+                left: auto;
+                bottom: auto;
+                width: 320px;
+                height: 100vh;
+                border-top: none;
+                border-left: 2px solid #444;
+            }
+        }
+        .grid-tools {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+        @media (min-width: 768px) {
+            .grid-tools {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 5px;
+                margin-bottom: 10px;
+            }
+        }
+        .tool-btn {
+            background: #555;
+            border: 2px solid #666;
+            color: white;
+            padding: 10px 0;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+        @media (min-width: 768px) {
+            .tool-btn { padding: 15px 0; font-size: 14px; }
+        }
+        .tool-btn:hover { background: #666; }
+        .tool-btn.active { background: #007bff; border-color: #0056b3; }
+        
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+        @media (min-width: 768px) {
+            .color-palette {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 5px;
+                margin-bottom: 10px;
+            }
+        }
+        .color-box {
+            height: 25px;
+            border: 2px solid #555;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        @media (min-width: 768px) {
+            .color-box { height: 35px; }
+        }
+        .color-box.active { border-color: #fff; transform: scale(1.05); }
+
+        #top-left-btn {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 45px;
+            height: 45px;
+            background: #444;
+            border: 2px solid #666;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 20;
+            border-radius: 4px;
+        }
+        #top-left-btn:hover { background: #555; }
+
+        .control-panel {
+            background: #2a2a2a;
+            padding: 6px;
+            border-radius: 6px;
+            margin-top: auto;
+            border: 1px solid #444;
+        }
+        .control-panel h4 { margin: 0 0 4px 0; font-size: 12px; color: #aaa; text-align: center; }
+        .gizmo-row {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        .gizmo-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #444;
+            border: 2px solid #777;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        @media (min-width: 768px) {
+            .gizmo-btn { width: 50px; height: 50px; font-size: 11px; }
+        }
+        .gizmo-btn:active { background: #007bff; }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+</head>
+<body>
+
+    <div id="top-left-btn" title="Salvar Projeto">+</div>
+
+    <div id="canvas-container"></div>
+
+    <div id="sidebar">
+        <div class="grid-tools">
+            <div class="tool-btn active" onclick="selectShape('cube', this)">1:Cubo</div>
+            <div class="tool-btn" onclick="selectShape('sphere', this)">2:Circ</div>
+            <div class="tool-btn" onclick="selectShape('cylinder', this)">3:Cil</div>
+            <div class="tool-btn" onclick="selectShape('cone', this)">4:Cone</div>
+            <div class="tool-btn" onclick="selectShape('pyramid', this)">5:Pir</div>
+            <div class="tool-btn" onclick="selectShape('diamond', this)">6:Diam</div>
+        </div>
+
+        <div class="color-palette">
+            <div class="color-box active" style="background: #ff4d4d;" onclick="selectColor('#ff4d4d', this)"></div>
+            <div class="color-box" style="background: #4d79ff;" onclick="selectColor('#4d79ff', this)"></div>
+            <div class="color-box" style="background: #4dff4d;" onclick="selectColor('#4dff4d', this)"></div>
+            <div class="color-box" style="background: #ffff4d;" onclick="selectColor('#ffff4d', this)"></div>
+            <div class="color-box" style="background: #ff4dda;" onclick="selectColor('#ff4dda', this)"></div>
+            <div class="color-box" style="background: #ffffff;" onclick="selectColor('#ffffff', this)"></div>
+        </div>
+
+        <div class="control-panel">
+            <h4>Manipular Objeto</h4>
+            <div class="gizmo-row">
+                <div class="gizmo-btn" id="btn-move">Mover</div>
+                <div class="gizmo-btn" id="btn-rotate">Rodar</div>
+                <div class="gizmo-btn" id="btn-scale">Escala</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let selectedShapeType = 'cube';
+        let selectedColorHex = '#ff4d4d';
+        let selectedObject = null;
+        let objectsGroup = new THREE.Group();
+        
+        let activeInteractionMode = null; 
+        let isInteracting = false;
+        let interactiveStartCoord = 0;
+
+        init();
+        animate();
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xffffff);
+            scene.add(objectsGroup);
+
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(10, 10, 10);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(20, 40, 20);
+            scene.add(directionalLight);
+
+            const gridHelper = new THREE.GridHelper(20, 20, 0xcccccc, 0xe5e5e5);
+            gridHelper.position.y = -0.01;
+            scene.add(gridHelper);
+
+            renderer.domElement.addEventListener('pointerdown', onPointerDown);
+            setupGizmoListeners();
+
+            document.getElementById('top-left-btn').addEventListener('click', handleExportAndDatabase);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function selectShape(shape, btn) {
+            selectedShapeType = shape;
+            document.querySelectorAll('.grid-tools .tool-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        function selectColor(hex, box) {
+            selectedColorHex = hex;
+            document.querySelectorAll('.color-palette .color-box').forEach(b => b.classList.remove('active'));
+            box.classList.add('active');
+
+            if (selectedObject) {
+                selectedObject.material.color.set(hex);
+            }
+        }
+
+        function createGeometry(type) {
+            switch(type) {
+                case 'cube': return new THREE.BoxGeometry(1, 1, 1);
+                case 'sphere': return new THREE.SphereGeometry(0.6, 16, 16);
+                case 'cylinder': return new THREE.CylinderGeometry(0.5, 0.5, 1, 16);
+                case 'cone': return new THREE.ConeGeometry(0.6, 1, 16);
+                case 'pyramid': return new THREE.ConeGeometry(0.7, 1, 4);
+                case 'diamond': return new THREE.OctahedronGeometry(0.7);
+                default: return new THREE.BoxGeometry(1, 1, 1);
+            }
+        }
+
+        function onPointerDown(event) {
+            if (event.button !== 0 && event.pointerType === 'mouse') return;
+            
+            const rect = renderer.domElement.getBoundingClientRect();
+            const mouse = new THREE.Vector2(
+                ((event.clientX - rect.left) / renderer.domElement.clientWidth) * 2 - 1,
+                -((event.clientY - rect.top) / renderer.domElement.clientHeight) * 2 + 1
+            );
+
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(objectsGroup.children);
+
+            if (intersects.length > 0) {
+                selectedObject = intersects[0].object;
+                selectedColorHex = '#' + selectedObject.material.color.getHexString();
+            } else {
+                const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+                const targetPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, targetPoint);
+
+                if (targetPoint) {
+                    targetPoint.x = Math.round(targetPoint.x);
+                    targetPoint.z = Math.round(targetPoint.z);
+                    targetPoint.y = 0.5;
+
+                    const geom = createGeometry(selectedShapeType);
+                    const mat = new THREE.MeshStandardMaterial({ color: selectedColorHex });
+                    const mesh = new THREE.Mesh(geom, mat);
+                    mesh.position.copy(targetPoint);
+                    
+                    objectsGroup.add(mesh);
+                    selectedObject = mesh;
+                }
+            }
+        }
+
+        function setupGizmoListeners() {
+            const moveBtn = document.getElementById('btn-move');
+            const rotateBtn = document.getElementById('btn-rotate');
+            const scaleBtn = document.getElementById('btn-scale');
+
+            moveBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); activeInteractionMode = 'move'; startInteraction(e); });
+            rotateBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); activeInteractionMode = 'rotate'; startInteraction(e); });
+            scaleBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); activeInteractionMode = 'scale'; startInteraction(e); });
+
+            window.addEventListener('pointermove', onPointerMoveInteraction);
+            window.addEventListener('pointerup', () => { isInteracting = false; });
+        }
+
+        function startInteraction(e) {
+            if (!selectedObject) return;
+            isInteracting = true;
+            interactiveStartCoord = e.clientY;
+        }
+
+        function onPointerMoveInteraction(event) {
+            if (!isInteracting || !selectedObject) return;
+            const delta = event.clientY - interactiveStartCoord;
+            interactiveStartCoord = event.clientY;
+
+            if (activeInteractionMode === 'move') {
+                selectedObject.position.y -= delta * 0.02;
+                if (selectedObject.position.y < 0) selectedObject.position.y = 0;
+            } else if (activeInteractionMode === 'rotate') {
+                selectedObject.rotation.y -= delta * 0.02;
+            } else if (activeInteractionMode === 'scale') {
+                const factor = 1 - delta * 0.02;
+                selectedObject.scale.clampScalar(0.1, 10);
+                selectedObject.scale.multiplyScalar(factor);
+            }
+        }
+
+        async function handleExportAndDatabase() {
+            const mapName = prompt("Digite o nome do novo mapa/jogo:");
+            if (!mapName) return;
+
+            const hostBase = window.location.origin;
+
+            try {
+                // 1. Pega o database.json atual do server para calcular o ID
+                const dbUrl = `${hostBase}/game/database.json`;
+                let response = await fetch(dbUrl);
+                let dbData = await response.json();
+
+                const lastId = dbData.length > 0 ? dbData[dbData.length - 1].id : 0;
+                const newId = lastId + 1;
+
+                dbData.push({
+                    "id": newId,
+                    "title": mapName
+                });
+
+                // 2. Converte o mapa 3D para o binário GLB
+                const exporter = new THREE.GLTFExporter();
+                exporter.parse(objectsGroup, async function (gltf) {
+                    const blob = new Blob([gltf], { type: 'model/gltf-binary' });
+
+                    // 3. Prepara para enviar tudo automaticamente ao Node.js
+                    const formData = new FormData();
+                    formData.append('id', newId);
+                    formData.append('database', JSON.stringify(dbData, null, 2));
+                    formData.append('mapfile', blob, 'map.glb');
+
+                    try {
+                        let saveRes = await fetch(`${hostBase}/game/save-map`, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (saveRes.ok) {
+                            alert(`Pronto! O servidor criou a pasta '${newId}', salvou o 'map.glb' e atualizou o database.json sozinho!`);
+                        } else {
+                            alert("Erro: O servidor Node.js recebeu o pedido, mas a rota '/game/save-map' precisa estar programada no backend para processar os arquivos.");
+                        }
+                    } catch (e) {
+                        alert("Falha na comunicação com o servidor para salvamento automático.");
+                    }
+
+                }, { binary: true });
+
+            } catch (error) {
+                console.error(error);
+                alert("Erro ao ler o database.json.");
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+    </script>
+</body>
+</html>
