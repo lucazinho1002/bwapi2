@@ -2,6 +2,8 @@
 um api de blocksworld nao official que nao é que nem o api de blocksworld, nao vem modificando ipa que é em um site em node.js hein
 ## coisas e coisos
 provavelmente vai notar que está imcompleto, mas está mesmo. estou ainda criando e testando **coisas e coisos**
+
+pls me ajude a adicionar coisas novas e se puder faça pull request com coisas novas para deixar mais parecido, como nunca joguei o blocksworld no celular em 2020 ou antes ai fica dificil pensar em coisa nova. 
 # avisios
 é uma criança de 10 anos fazendo isso com a ajuda de uma ia, quanquer erro faça uma issue, ou até pedir para adicionar algo faça uma issue.
 
